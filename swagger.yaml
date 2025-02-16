@@ -16,6 +16,27 @@ components:
       bearerFormat: JWT
 
   schemas:
+    Pagination:
+      type: object
+      properties:
+        total:
+          type: integer
+          description: จำนวนรายการทั้งหมด
+        limit:
+          type: integer
+          description: จำนวนรายการสูงสุดต่อหน้า
+        offset:
+          type: integer
+          description: ตำแหน่งเริ่มต้นของรายการในหน้าปัจจุบัน
+        hasMore:
+          type: boolean
+          description: มีรายการในหน้าถัดไปหรือไม่
+      required:
+        - total
+        - limit
+        - offset
+        - hasMore
+
     ReminderOptions:
       type: integer
       enum: [0, 5, 10, 15, 30, 60, 120, 1440, 2880, 10080]
@@ -97,7 +118,6 @@ components:
           uniqueItems: true
           description: ไอดีของกลุ่มของกิจกรรมดังกล่าว
       required:
-        - id
         - title
         - start
         - end
@@ -219,26 +239,23 @@ components:
         - lastName
         - studentNo
 
-    SharedGroup:
+    SharedEvent:
       type: object
       properties:
         id:
           type: integer
-          description: ไอดีของกลุ่มปฏิทินร่วมกัน
+          description: ไอดีของกิจกรรมร่วมกัน
         title:
           type: string
           minLength: 1
           maxLength: 32
-          description: ชื่อกลุ่มปฏิทินร่วมกัน
-        color:
-          type: string
-          pattern: '^rgb\(\d{1,3},\d{1,3},\d{1,3}\)$'
-          description: สีในรูปแบบ RGB เช่น rgb(255,0,0)
-        priority:
-          type: integer
-          minimum: 1
-          maximum: 3
-          description: ระดับความสำคัญ (1-3)
+          description: ชื่อกลุ่มกิจกรรมร่วมกัน
+        reminders:
+          type: array
+          items:
+            type: integer
+          uniqueItems: true
+          description: นาทีที่จะแจ้งเตือนทั้งหมดก่อนถึงเวลากิจกรรม
         idealDays:
           type: array
           items:
@@ -254,33 +271,29 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Member'
-          description: รายชื่อสมาชิกในกลุ่ม
+          description: รายชื่อสมาชิกในกิจกรรม
       required:
         - id
         - title
-        - color
-        - priority
+        - reminders
         - idealDays
         - idealTimeRange
         - members
 
-    SharedGroupNew:
+    SharedEventUpdate:
       type: object
       properties:
         title:
           type: string
           minLength: 1
           maxLength: 32
-          description: ชื่อกลุ่มปฏิทินที่แชร์
-        color:
-          type: string
-          pattern: '^rgb\(\d{1,3},\d{1,3},\d{1,3}\)$'
-          description: สีในรูปแบบ RGB เช่น rgb(255,0,0)
-        priority:
-          type: integer
-          minimum: 1
-          maximum: 3
-          description: ระดับความสำคัญ (1-3)
+          description: ชื่อกลุ่มกิจกรรมร่วมกัน
+        reminders:
+          type: array
+          items:
+            type: integer
+          uniqueItems: true
+          description: นาทีที่จะแจ้งเตือนทั้งหมดก่อนถึงเวลากิจกรรม
         idealDays:
           type: array
           items:
@@ -292,7 +305,39 @@ components:
         idealTimeRange:
           $ref: '#/components/schemas/TimeRange'
           description: ช่วงเวลาที่เหมาะสมสำหรับการนัดหมาย
-        memberEmails:
+        members:
+          type: array
+          items:
+            type: string
+            format: email
+          description: อีเมลของสมาชิกที่ต้องการเชิญ
+
+    SharedEventNew:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 32
+          description: ชื่อกลุ่มกิจกรรมร่วมกัน
+        reminders:
+          type: array
+          items:
+            type: integer
+          uniqueItems: true
+          description: นาทีที่จะแจ้งเตือนทั้งหมดก่อนถึงเวลากิจกรรม
+        idealDays:
+          type: array
+          items:
+            type: integer
+            minimum: 0
+            maximum: 6
+          uniqueItems: true
+          description: วันที่เหมาะสมสำหรับการนัดหมาย (0 = อาทิตย์, 6 = เสาร์)
+        idealTimeRange:
+          $ref: '#/components/schemas/TimeRange'
+          description: ช่วงเวลาที่เหมาะสมสำหรับการนัดหมาย
+        members:
           type: array
           items:
             type: string
@@ -300,11 +345,10 @@ components:
           description: อีเมลของสมาชิกที่ต้องการเชิญ
       required:
         - title
-        - color
-        - priority
+        - reminders
         - idealDays
         - idealTimeRange
-        - memberEmails
+        - members
 
     TimeRange:
       type: object
@@ -316,7 +360,7 @@ components:
         end:
           type: string
           format: date-time
-          description: เวลาสิ้นสุด (รูปแบบ HH:mm)
+          description: เวลาสิ้นสุด
       required:
         - start
         - end
@@ -438,16 +482,56 @@ paths:
     get:
       tags:
         - ปฏิทิน
-      summary: ดูกิจกรรมทั้งหมดของผู้ใช้
+      summary: ดูกิจกรรมตามช่วงเวลา
+      parameters:
+        - in: query
+          name: startDate
+          required: true
+          schema:
+            type: string
+            format: date
+          description: วันที่เริ่มต้น (จำเป็นต้องระบุ)
+        - in: query
+          name: endDate
+          required: true
+          schema:
+            type: string
+            format: date
+          description: วันที่สิ้นสุด (จำเป็นต้องระบุ)
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 1000
+            default: 1000
+          description: จำนวนกิจกรรมสูงสุดที่ต้องการ (ไม่เกิน 1,000)
+        - in: query
+          name: offset
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+          description: ตำแหน่งเริ่มต้นของกิจกรรม (สำหรับการแบ่งหน้า)
       responses:
         '200':
-          description: รายการกิจกรรม
+          description: รายการกิจกรรมและข้อมูลการแบ่งหน้า
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Event'
+                type: object
+                properties:
+                  events:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Event'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+                required:
+                  - events
+                  - pagination
+        '400':
+          description: คำขอไม่ถูกต้อง (ไม่ได้ระบุวันที่, วันที่ไม่ถูกต้อง, limit หรือ offset ไม่ถูกต้อง)
         '401':
           description: ไม่ได้รับอนุญาต
 
@@ -537,7 +621,7 @@ paths:
             schema:
               $ref: '#/components/schemas/EventNew'
       responses:
-        '200':
+        '201':
           description: กิจกรรมที่สร้างแล้ว
           content:
             application/json:
@@ -635,21 +719,34 @@ paths:
           name: limit
           schema:
             type: integer
-          description: จำนวนการแจ้งเตือนที่ต้องการ (ไม่เกิน 99)
+            minimum: 1
+            maximum: 1000
+            default: 1000
+          description: จำนวนการแจ้งเตือนที่ต้องการ (ไม่เกิน 1,000)
         - in: query
           name: offset
           schema:
             type: integer
-          description: ตำแหน่งเริ่มต้นของการแจ้งเตือน
+            minimum: 0
+            default: 0
+          description: ตำแหน่งเริ่มต้นของการแจ้งเตือน (สำหรับการแบ่งหน้า)
       responses:
         '200':
-          description: รายการการแจ้งเตือน
+          description: รายการการแจ้งเตือนและข้อมูลการแบ่งหน้า
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  type: object
+                type: object
+                properties:
+                  notifications:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Notification'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+                required:
+                  - notifications
+                  - pagination
         '400':
           description: คำขอไม่ถูกต้อง
         '401':
@@ -690,24 +787,24 @@ paths:
         '401':
           description: ไม่ได้รับอนุญาต
 
-  /calendar/shared-group:
+  /calendar/event/shared:
     post:
       tags:
-        - ปฏิทินร่วมกัน
-      summary: สร้างกลุ่มปฏิทินร่วมกัน
+        - กิจกรรมร่วมกัน
+      summary: สร้างกิจกรรมร่วมกัน
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/SharedGroupNew'
+              $ref: '#/components/schemas/SharedEventNew'
       responses:
         '201':
-          description: กลุ่มปฏิทินร่วมกันที่สร้างแล้ว
+          description: กิจกรรมร่วมกันที่สร้างแล้ว
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SharedGroup'
+                $ref: '#/components/schemas/SharedEvent'
         '400':
           description: คำขอไม่ถูกต้อง
           content:
@@ -717,36 +814,31 @@ paths:
         '401':
           description: ไม่ได้รับอนุญาต
 
-  /calendar/shared-group/{id}/members:
-    post:
+  /calendar/event/shared/{id}:
+    patch:
       tags:
-        - ปฏิทินร่วมกัน
-      summary: เพิ่มสมาชิกในกลุ่ม
+        - กิจกรรมร่วมกัน
+      summary: แก้ไขกิจกรรมร่วมกัน
       parameters:
         - in: path
           name: id
           required: true
           schema:
             type: integer
-          description: ไอดีของกลุ่มปฏิทินร่วมกัน
+          description: ไอดีของกิจกรรมร่วมกัน
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              type: object
-              properties:
-                emails:
-                  type: array
-                  items:
-                    type: string
-                    format: email
-                  description: รายการอีเมลของสมาชิกที่ต้องการเพิ่ม
-              required:
-                - emails
+              $ref: '#/components/schemas/SharedEventUpdate'
       responses:
         '200':
-          description: เพิ่มสมาชิกสำเร็จ
+          description: กิจกรรมร่วมกันที่อัปเดตแล้ว
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SharedEvent'
         '400':
           description: คำขอไม่ถูกต้อง
           content:
@@ -756,200 +848,46 @@ paths:
         '401':
           description: ไม่ได้รับอนุญาต
         '404':
-          description: ไม่พบกลุ่ม
-
+          description: ไม่พบกิจกรรมร่วมกัน
+    
     delete:
       tags:
-        - ปฏิทินร่วมกัน
-      summary: ลบสมาชิกออกจากกลุ่ม
+        - กิจกรรมร่วมกัน
+      summary: ลบกิจกรรมร่วมกัน
       parameters:
         - in: path
           name: id
           required: true
           schema:
             type: integer
-          description: ไอดีของกลุ่มปฏิทินร่วมกัน
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                memberIds:
-                  type: array
-                  items:
-                    type: integer
-                  description: รายการไอดีของสมาชิกที่ต้องการลบ
-              required:
-                - memberIds
+          description: ไอดีของกิจกรรมร่วมกัน
       responses:
         '200':
-          description: ลบสมาชิกสำเร็จ
-        '400':
-          description: คำขอไม่ถูกต้อง
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
+          description: ลบกิจกรรมร่วมกันสำเร็จ
         '401':
           description: ไม่ได้รับอนุญาต
         '404':
-          description: ไม่พบกลุ่มหรือสมาชิก
+          description: ไม่พบกิจกรรมร่วมกัน
 
-    get:
-      tags:
-        - ปฏิทินร่วมกัน
-      summary: ดูรายชื่อสมาชิกในกลุ่ม
-      parameters:
-        - in: path
-          name: id
-          required: true
-          schema:
-            type: integer
-          description: ไอดีของกลุ่มปฏิทินร่วมกัน
-      responses:
-        '200':
-          description: รายชื่อสมาชิก
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Member'
-        '400':
-          description: คำขอไม่ถูกต้อง
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '401':
-          description: ไม่ได้รับอนุญาต
-        '404':
-          description: ไม่พบกลุ่ม
-
-  /calendar/shared-group/invite/{token}/{action}:
+  /calendar/event/shared/{id}/arrange:
     post:
       tags:
-        - ปฏิทินร่วมกัน
-      summary: ตอบรับหรือปฏิเสธคำเชิญเข้าร่วมกลุ่ม
-      parameters:
-        - in: path
-          name: token
-          required: true
-          schema:
-            type: string
-            format: uuid
-          description: โทเคนคำเชิญ
-        - in: path
-          name: action
-          required: true
-          schema:
-            type: string
-            enum: [accept, reject]
-          description: การกระทำ (ตอบรับ/ปฏิเสธ)
-      responses:
-        '200':
-          description: ดำเนินการสำเร็จ
-        '400':
-          description: คำขอไม่ถูกต้อง
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '401':
-          description: ไม่ได้รับอนุญาต
-        '404':
-          description: ไม่พบคำเชิญ
-
-  /calendar/shared-group/invites:
-    get:
-      tags:
-        - ปฏิทินร่วมกัน
-      summary: ดูคำเชิญทั้งหมด
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                email:
-                  type: string
-                  format: email
-                  description: อีเมลที่ต้องการดูคำเชิญ
-              required:
-                - email
-      responses:
-        '200':
-          description: รายการคำเชิญ
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  type: object
-                  properties:
-                    token:
-                      type: string
-                      format: uuid
-                      description: โทเคนคำเชิญ
-                    groupId:
-                      type: integer
-                      description: ไอดีของกลุ่ม
-                    groupTitle:
-                      type: string
-                      description: ชื่อกลุ่ม
-                    invitedBy:
-                      type: string
-                      description: ชื่อผู้เชิญ
-                    createdAt:
-                      type: string
-                      format: date-time
-                      description: เวลาที่สร้างคำเชิญ
-        '400':
-          description: คำขอไม่ถูกต้อง
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '401':
-          description: ไม่ได้รับอนุญาต
-
-  /calendar/shared-group/{id}/schedule:
-    post:
-      tags:
-        - ปฏิทินร่วมกัน
-      summary: จัดตารางเวลาประชุมกลุ่ม
+        - กิจกรรมร่วมกัน
+      summary: เริ่มกิจกรรมร่วมกันและลบสมาชิกที่ปฏิเสธหรือยังไม่ตอบรับ
       parameters:
         - in: path
           name: id
           required: true
           schema:
             type: integer
-          description: ไอดีของกลุ่มปฏิทินร่วมกัน
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                duration:
-                  type: integer
-                  description: ระยะเวลาที่ต้องการ (นาที)
-                title:
-                  type: string
-                  description: ชื่อการประชุม (ไม่บังคับ)
-              required:
-                - duration
+          description: ไอดีของกิจกรรมร่วมกัน
       responses:
-        '201':
-          description: สร้างการประชุมสำเร็จ
+        '200':
+          description: กิจกรรมร่วมกันที่อัปเดตแล้ว
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Event'
+                $ref: '#/components/schemas/SharedEvent'
         '400':
           description: คำขอไม่ถูกต้อง
           content:
@@ -959,4 +897,6 @@ paths:
         '401':
           description: ไม่ได้รับอนุญาต
         '404':
-          description: ไม่พบกลุ่มหรือไม่พบเวลาที่เหมาะสม
+          description: ไม่พบกิจกรรมร่วมกัน
+        '409':
+          description: ไม่สามารถหาเวลาว่างร่วมกัน
