@@ -272,6 +272,10 @@ components:
           items:
             $ref: '#/components/schemas/Member'
           description: รายชื่อสมาชิกในกิจกรรม
+        events:
+          type: array
+          items:
+            $ref: '#/components/schemas/Event'
       required:
         - id
         - title
@@ -368,9 +372,6 @@ components:
     Member:
       type: object
       properties:
-        id:
-          type: integer
-          description: ไอดีของสมาชิก
         email:
           type: string
           format: email
@@ -380,9 +381,50 @@ components:
           enum: [pending, accepted, rejected]
           description: สถานะการเป็นสมาชิก
       required:
-        - id
         - email
         - status
+
+    FcmToken:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: ไอดีของโทเคน FCM
+        token:
+          type: string
+          description: โทเคน FCM
+        deviceName:
+          type: string
+          minLength: 1
+          maxLength: 64
+          description: ชื่ออุปกรณ์
+        createdAt:
+          type: string
+          format: date-time
+          description: เวลาที่เพิ่มโทเคน
+      required:
+        - id
+        - token
+        - deviceName
+        - createdAt
+
+    FcmTokenInfo:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: ไอดีของโทเคน FCM
+        deviceName:
+          type: string
+          description: ชื่ออุปกรณ์
+        createdAt:
+          type: string
+          format: date-time
+          description: เวลาที่เพิ่มโทเคน
+      required:
+        - id
+        - deviceName
+        - createdAt
 
     Notification:
       type: object
@@ -787,6 +829,55 @@ paths:
         '401':
           description: ไม่ได้รับอนุญาต
 
+  /calendar/events/shared:
+    get:
+      tags:
+        - กิจกรรมร่วมกัน
+      summary: ดูกิจกรรมร่วมกันทั้งหมด
+      parameters:
+        - in: query
+          name: status
+          schema:
+            type: string
+            enum: [pending, accepted, rejected]
+          description: กรองตามสถานะของกิจกรรม
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 1000
+            default: 1000
+          description: จำนวนกิจกรรมสูงสุดที่ต้องการ (ไม่เกิน 1,000)
+        - in: query
+          name: offset
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+          description: ตำแหน่งเริ่มต้นของกิจกรรม (สำหรับการแบ่งหน้า)
+      responses:
+        '200':
+          description: รายการกิจกรรมร่วมกันและข้อมูลการแบ่งหน้า
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  sharedEvents:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/SharedEvent'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+                required:
+                  - sharedEvents
+                  - pagination
+        '400':
+          description: คำขอไม่ถูกต้อง
+        '401':
+          description: ไม่ได้รับอนุญาต
+
   /calendar/event/shared:
     post:
       tags:
@@ -868,6 +959,122 @@ paths:
           description: ไม่ได้รับอนุญาต
         '404':
           description: ไม่พบกิจกรรมร่วมกัน
+
+  /calendar/event/shared/{id}/accept:
+    post:
+      tags:
+        - กิจกรรมร่วมกัน
+      summary: ตอบรับกิจกรรมร่วมกัน
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+          description: ไอดีของกิจกรรมร่วมกัน
+      responses:
+        '200':
+          description: ตอบรับกิจกรรมร่วมกันสำเร็จ
+        '404':
+          description: ไม่ได้รับอนุญาตหรือไม่พบกิจกรรมร่วมกัน
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /user/fcm:
+    post:
+      tags:
+        - ผู้ใช้งาน
+      summary: เพิ่มโทเคน FCM
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                token:
+                  type: string
+                  description: โทเคน FCM
+                deviceName:
+                  type: string
+                  minLength: 1
+                  maxLength: 64
+                  description: ชื่ออุปกรณ์
+              required:
+                - token
+                - deviceName
+      responses:
+        '201':
+          description: เพิ่มโทเคนสำเร็จ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FcmTokenInfo'
+        '400':
+          description: โทเคนหรือชื่ออุปกรณ์ไม่ถูกต้อง
+        '401':
+          description: ไม่ได้รับอนุญาต
+        '409':
+          description: จำนวนโทเคนเกินกำหนด (สูงสุด 10 โทเคน)
+
+    get:
+      tags:
+        - ผู้ใช้งาน
+      summary: ดูรายการอุปกรณ์ที่ลงทะเบียน FCM
+      responses:
+        '200':
+          description: รายการอุปกรณ์ที่ลงทะเบียน FCM
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/FcmTokenInfo'
+                maxItems: 10
+
+  /user/fcm/{id}:
+    delete:
+      tags:
+        - ผู้ใช้งาน
+      summary: ลบการลงทะเบียน FCM ของอุปกรณ์
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+          description: ไอดีของการลงทะเบียนที่ต้องการลบ
+      responses:
+        '200':
+          description: ลบการลงทะเบียนสำเร็จ
+        '401':
+          description: ไม่ได้รับอนุญาต
+        '404':
+          description: ไม่พบการลงทะเบียน
+
+  /calendar/event/shared/{id}/reject:
+    post:
+      tags:
+        - กิจกรรมร่วมกัน
+      summary: ปฏิเสธกิจกรรมร่วมกัน
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+          description: ไอดีของกิจกรรมร่วมกัน
+      responses:
+        '200':
+          description: ปฏิเสธกิจกรรมร่วมกันสำเร็จ
+        '404':
+          description: ไม่ได้รับอนุญาตหรือไม่พบกิจกรรมร่วมกัน
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
 
   /calendar/event/shared/{id}/arrange:
     post:
