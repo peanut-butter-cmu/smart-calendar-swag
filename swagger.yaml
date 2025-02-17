@@ -250,6 +250,15 @@ components:
           minLength: 1
           maxLength: 32
           description: ชื่อกลุ่มกิจกรรมร่วมกัน
+        status:
+          type: string
+          enum: [pending, arranged]
+          description: สถานะของกิจกรรมร่วมกัน
+        duration:
+          type: integer
+          minimum: 30
+          maximum: 720 # 12 ชม.
+          description: ระยะเวลาของกิจกรรมร่วมกันในหน่วยนาที
         reminders:
           type: array
           items:
@@ -304,6 +313,11 @@ components:
           minLength: 1
           maxLength: 32
           description: ชื่อกลุ่มกิจกรรมร่วมกัน
+        duration:
+          type: integer
+          minimum: 30
+          maximum: 720 # 12 ชม.
+          description: ระยะเวลาของกิจกรรมร่วมกันในหน่วยนาที
         reminders:
           type: array
           items:
@@ -336,6 +350,11 @@ components:
           minLength: 1
           maxLength: 32
           description: ชื่อกลุ่มกิจกรรมร่วมกัน
+        duration:
+          type: integer
+          minimum: 30
+          maximum: 720 # 12 ชม.
+          description: ระยะเวลาของกิจกรรมร่วมกันในหน่วยนาที
         reminders:
           type: array
           items:
