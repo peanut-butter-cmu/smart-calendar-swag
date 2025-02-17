@@ -335,7 +335,7 @@ components:
         idealTimeRange:
           $ref: '#/components/schemas/TimeRange'
           description: ช่วงเวลาที่เหมาะสมสำหรับการนัดหมาย
-        members:
+        invites:
           type: array
           items:
             type: string
@@ -372,7 +372,7 @@ components:
         idealTimeRange:
           $ref: '#/components/schemas/TimeRange'
           description: ช่วงเวลาที่เหมาะสมสำหรับการนัดหมาย
-        members:
+        invites:
           type: array
           items:
             type: string
@@ -412,10 +412,14 @@ components:
         lastName:
           type: string
           description: นามสกุลของสมาชิก
+        owner:
+          type: boolean
+          description: ระบุเจ้าของกิจกรรมร่วมกัน
       required:
         - firstName
         - middleName
         - lastName
+        - owner
     
     Invite:
       type: object
