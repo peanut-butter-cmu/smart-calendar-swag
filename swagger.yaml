@@ -95,6 +95,19 @@ components:
         - end
         - groups
     
+    Repeat:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [weekly, monthly, yearly]
+          description: ประเภทการวนซ้ำกิจกรรม
+        count:
+          type: number
+          minimum: 1
+          maximum: 10
+          description: จำนวนการวนซ้ำกิจกรรม
+    
     EventNew:
       type: object
       properties:
@@ -289,6 +302,8 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Event'
+        repeat:
+          $ref: '#/components/schemas/Repeat'
         updatedAt:
           type: string
           format: date-time
@@ -304,6 +319,8 @@ components:
         - idealDays
         - idealTimeRange
         - members
+        - invites
+        - events
 
     SharedEventUpdate:
       type: object
@@ -340,7 +357,11 @@ components:
           items:
             type: string
             format: email
+          minItems: 1
+          maxItems: 16
           description: อีเมลล์ของสมาชิกที่ต้องการเชิญ
+        repeat:
+          $ref: '#/components/schemas/Repeat'
 
     SharedEventNew:
       type: object
@@ -377,28 +398,43 @@ components:
           items:
             type: string
             format: email
-          description: อีเมลล์ของสมาชิกที่ต้องการเชิญ
+            minItems: 1
+            maxItems: 16
+            description: อีเมลล์ของสมาชิกที่ต้องการเชิญ
+        repeat:
+          $ref: '#/components/schemas/Repeat'
       required:
         - title
         - reminders
         - idealDays
         - idealTimeRange
-        - members
+        - invites
 
     TimeRange:
       type: object
       properties:
-        start:
+        startDate:
           type: string
-          format: date-time
-          description: เวลาเริ่มต้น
-        end:
+          format: date
+          description: วันที่เริ่มต้น
+        endDate:
           type: string
-          format: date-time
-          description: เวลาสิ้นสุด
+          format: date
+          description: วันที่สิ้นสุด
+        dailyStartMin:
+          type: number
+          description: นาทีของเวลาเริ่มต้น
+          minimum: 0
+          maximum: 1440
+        dailyEndMin:
+          description: นาทีของเวลาสิ้นสุด
+          minimum: 0
+          maximum: 1440
       required:
-        - start
-        - end
+        - startDate
+        - endDate
+        - dailyStartMin
+        - dailyEndMin
 
     Member:
       type: object
@@ -492,17 +528,22 @@ components:
         id:
           type: integer
           description: ไอดีของการแจ้งเตือน
-        title:
-          type: string
-          description: หัวข้อการแจ้งเตือน
-        message:
-          type: string
-          description: ข้อความการแจ้งเตือน
         type:
           type: string
-          enum: [system]
+          enum: [event_created, event_scheduled, event_deleted, invite_accepted, invite_rejected, event_reminder]
           description: ประเภทการแจ้งเตือน
-        isRead:
+        data:
+          oneOf:
+            - type: object
+              properties:
+                eventId:
+                  type: number
+            - type: object
+              properties:
+                email:
+                  type: string
+                  format: email
+        read:
           type: boolean
           description: สถานะการอ่าน
         createdAt:
@@ -854,7 +895,7 @@ paths:
         '401':
           description: ไม่ได้รับอนุญาต
 
-  /notifications/{id}/read:
+  /notification/{id}/read:
     patch:
       tags:
         - การแจ้งเตือน
@@ -884,6 +925,19 @@ paths:
       responses:
         '200':
           description: ทำเครื่องหมายว่าอ่านแล้วทั้งหมดสำเร็จ
+        '400':
+          description: คำขอไม่ถูกต้อง
+        '401':
+          description: ไม่ได้รับอนุญาต
+
+  /notification/:id:
+    delete:
+      tags:
+        - การแจ้งเตือน
+      summary: ลบการแจ้งเตือน
+      responses:
+        '200':
+          description: ลบการแจ้งเตือนสำเร็จ
         '400':
           description: คำขอไม่ถูกต้อง
         '401':
