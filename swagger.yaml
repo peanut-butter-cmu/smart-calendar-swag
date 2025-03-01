@@ -74,6 +74,9 @@ components:
           minLength: 1
           maxLength: 32
           description: ชื่อกลุ่มกิจกรรม
+        type:
+          type: string
+          enum: [non_shared, unsaved_shared, saved_shared]
         start:
           type: string
           format: date-time
@@ -100,7 +103,7 @@ components:
       properties:
         type:
           type: string
-          enum: [weekly, monthly, yearly]
+          enum: [week, month]
           description: ประเภทการวนซ้ำกิจกรรม
         count:
           type: number
@@ -265,7 +268,7 @@ components:
           description: ชื่อกลุ่มกิจกรรมร่วมกัน
         status:
           type: string
-          enum: [pending, arranged]
+          enum: [pending, arranged, saved, deleted]
           description: สถานะของกิจกรรมร่วมกัน
         duration:
           type: integer
@@ -1194,7 +1197,7 @@ paths:
     post:
       tags:
         - กิจกรรมร่วมกัน
-      summary: เริ่มกิจกรรมร่วมกันและลบสมาชิกที่ปฏิเสธหรือยังไม่ตอบรับ
+      summary: ค้นหาเวลาว่างร่วมกันและลบสมาชิกที่ปฏิเสธหรือยังไม่ตอบรับ
       parameters:
         - in: path
           name: id
@@ -1221,3 +1224,33 @@ paths:
           description: ไม่พบกิจกรรมร่วมกัน
         '409':
           description: ไม่สามารถหาเวลาว่างร่วมกัน
+
+  /calendar/event/shared/{id}/save:
+    post:
+      tags:
+        - กิจกรรมร่วมกัน
+      summary: บันทึกกิจกรรมร่วมกัน
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+          description: ไอดีของกิจกรรมร่วมกัน
+      responses:
+        '200':
+          description: กิจกรรมร่วมกันที่อัปเดตแล้ว
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SharedEvent'
+        '400':
+          description: คำขอไม่ถูกต้อง
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: ไม่ได้รับอนุญาต
+        '404':
+          description: ไม่พบกิจกรรมร่วมกัน
