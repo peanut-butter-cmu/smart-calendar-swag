@@ -94,6 +94,7 @@ components:
       required:
         - id
         - title
+        - type
         - start
         - end
         - groups
@@ -255,6 +256,35 @@ components:
         - lastName
         - studentNo
 
+    SharedCalendarEvent:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: ไอดีของกิจกรรม
+        title:
+          type: string
+          minLength: 1
+          maxLength: 32
+          description: ชื่อกลุ่มกิจกรรม
+        type:
+          type: string
+          enum: [non_shared, unsaved_shared, saved_shared]
+        start:
+          type: string
+          format: date-time
+          description: เวลาเริ่มต้น
+        end:
+          type: string
+          format: date-time
+          description: เวลาสิ้นสุด
+      required:
+        - id
+        - title
+        - type
+        - start
+        - end
+
     SharedEvent:
       type: object
       properties:
@@ -301,10 +331,6 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Invite'
-        events:
-          type: array
-          items:
-            $ref: '#/components/schemas/Event'
         repeat:
           $ref: '#/components/schemas/Repeat'
         updatedAt:
@@ -451,14 +477,19 @@ components:
         lastName:
           type: string
           description: นามสกุลของสมาชิก
-        owner:
+        sharedEventOwner:
           type: boolean
           description: ระบุเจ้าของกิจกรรมร่วมกัน
+        events:
+          type: array
+          items:
+            $ref: '#/components/schemas/SharedCalendarEvent'
       required:
         - firstName
         - middleName
         - lastName
-        - owner
+        - sharedEventOwner
+        - events
     
     Invite:
       type: object
