@@ -655,6 +655,19 @@ paths:
         '401':
           description: ไม่ได้รับอนุญาต
 
+  /user/sync:
+    post:
+      tags:
+        - ผู้ใช้งาน
+      summary: ซิงค์ข้อมูลกับระบบภายนอก
+      responses:
+        '204':
+          description: ซิงค์ข้อมูลสำเร็จ
+        '400':
+          description: คำขอไม่ถูกต้อง
+        '401':
+          description: ไม่ได้รับอนุญาต
+
   /calendar/events:
     get:
       tags:
@@ -735,7 +748,6 @@ paths:
           description: ไม่ได้รับอนุญาต
         '404':
           description: ไม่พบกิจกรรม
-
     patch:
       tags:
         - ปฏิทิน
@@ -779,7 +791,7 @@ paths:
             type: integer
           description: ไอดีของกิจกรรม
       responses:
-        '200':
+        '204':
           description: ลบกิจกรรมสำเร็จ
         '401':
           description: ไม่ได้รับอนุญาต
@@ -1054,6 +1066,31 @@ paths:
           description: ไม่ได้รับอนุญาต
 
   /calendar/event/shared/{id}:
+    get:
+      tags:
+        - กิจกรรมร่วมกัน
+      summary: ดูกิจกรรมร่วมกันตามไอดี
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+          description: ไอดีของกิจกรรมร่วมกัน
+      responses:
+        '200':
+          description: กิจกรรมร่วมกัน
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SharedEvent'
+        '400':
+          description: คำขอไม่ถูกต้อง
+        '401':
+          description: ไม่ได้รับอนุญาต
+        '404':
+          description: ไม่พบกิจกรรมร่วมกัน
+
     patch:
       tags:
         - กิจกรรมร่วมกัน
@@ -1101,7 +1138,7 @@ paths:
             type: integer
           description: ไอดีของกิจกรรมร่วมกัน
       responses:
-        '200':
+        '204':
           description: ลบกิจกรรมร่วมกันสำเร็จ
         '401':
           description: ไม่ได้รับอนุญาต
@@ -1121,7 +1158,7 @@ paths:
             type: integer
           description: ไอดีของกิจกรรมร่วมกัน
       responses:
-        '200':
+        '204':
           description: ตอบรับกิจกรรมร่วมกันสำเร็จ
         '404':
           description: ไม่ได้รับอนุญาตหรือไม่พบกิจกรรมร่วมกัน
@@ -1195,7 +1232,7 @@ paths:
             type: integer
           description: ไอดีของการลงทะเบียนที่ต้องการลบ
       responses:
-        '200':
+        '204':
           description: ลบการลงทะเบียนสำเร็จ
         '401':
           description: ไม่ได้รับอนุญาต
@@ -1215,7 +1252,7 @@ paths:
             type: integer
           description: ไอดีของกิจกรรมร่วมกัน
       responses:
-        '200':
+        '204':
           description: ปฏิเสธกิจกรรมร่วมกันสำเร็จ
         '404':
           description: ไม่ได้รับอนุญาตหรือไม่พบกิจกรรมร่วมกัน
