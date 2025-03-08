@@ -5,7 +5,7 @@ info:
   description: Smart Calendar API
 
 servers:
-  - url: https://smc-api.pmaw.net
+  - url: https://unical.cpe.eng.cmu.ac.th/api/
     description: production server
 
 components:
