@@ -572,6 +572,8 @@ components:
               properties:
                 eventId:
                   type: number
+                eventTitle:
+                  type: string
             - type: object
               properties:
                 email:
